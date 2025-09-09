@@ -1,19 +1,19 @@
 # ====== CORE SETTINGS ======
 interval_seconds: 5               # pull orderbook every 5s
-gcs_bucket: "bananazone"          # <-- your bucket
+gcs_bucket: "bananazone"          # your bucket
 
 exchanges:
   - name: coinbase
     quote: USD
-  - name: bybit
-    quote: USDT
+  - name: kraken
+    quote: USD
 
 assets: [BTC, ETH, ADA, XRP]
 layers: [5, 50, 100]
 
 # ====== PUBLISH CADENCE ======
 publish_1min_minutes: 5           # near-live 1m daily must be <= 5 minutes behind
-publish_5s_minutes: 60            # compose 5s daily hourly (you said near-live not needed here)
+publish_5s_minutes: 60            # compose 5s daily hourly
 
 # ====== PATHS (NDJSON .jsonl) ======
 paths:
