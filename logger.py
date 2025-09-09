@@ -329,9 +329,15 @@ if __name__ == "__main__":
         except ImportError as e:
             logger.warning(f"Failed to import improved collector: {e}")
             logger.info("🔄 Falling back to standard collector")
+            # Don't call main() recursively, run the standard collector directly
+            cfg = load_config()
+            interval = int(cfg.get("interval_seconds", 5))
+            bucket = cfg["gcs_bucket"]
+            # ... run standard collector logic
             main()
         except Exception as e:
             logger.error(f"Improved collector failed: {e}")
+            logger.error(f"Error details: {traceback.format_exc()}")
             logger.info("🔄 Falling back to standard collector")
             main()
     else:
