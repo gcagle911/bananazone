@@ -1,14 +1,15 @@
-# gcs.py
+# gcs.py — race-safe NDJSON writes with browser-friendly headers
 from typing import List, Optional
+import uuid
 from google.cloud import storage
 
-# === Auth: load key directly from a Render Secret File in the app root ===
-# In Render, add a Secret File with path exactly:  gcs-key.json
-# Paste your full service account JSON as the contents.
-_KEY_PATH = "gcs-key.json"
-
-# Keep a single client for the process
+_KEY_PATH = "gcs-key.json"  # Render Secret File path
 _client_singleton: Optional[storage.Client] = None
+
+# Serve inline in browsers (fixes iOS "download?" prompt)
+CACHE_CONTROL = "no-cache, max-age=0"
+CONTENT_TYPE  = "text/plain; charset=utf-8"   # <- instead of application/json
+DISPOSITION   = "inline"
 
 
 def _client() -> storage.Client:
@@ -23,7 +24,6 @@ def _bucket(name: str) -> storage.Bucket:
 
 
 def download_text(bucket_name: str, key: str) -> str:
-    """Return object contents as text, or '' if missing."""
     b = _bucket(bucket_name)
     blob = b.blob(key)
     if not blob.exists():
@@ -37,10 +37,16 @@ def object_exists(bucket_name: str, key: str) -> bool:
 
 
 def get_generation(bucket_name: str, key: str) -> Optional[int]:
-    """Return GCS generation number for optimistic concurrency, or None if missing."""
     b = _bucket(bucket_name)
     blob = b.get_blob(key)
     return None if blob is None else blob.generation
+
+
+def _persist_headers(blob: storage.Blob):
+    blob.cache_control = CACHE_CONTROL
+    blob.content_type = CONTENT_TYPE
+    blob.content_disposition = DISPOSITION
+    blob.patch()
 
 
 def upload_text(
@@ -48,60 +54,62 @@ def upload_text(
     key: str,
     text: str,
     if_generation_match: Optional[int] = None,
-    content_type: str = "application/json",
 ) -> None:
     """
-    Upload full text to an object. If if_generation_match is provided,
-    GCS will only write if the object's generation matches (race-safe).
-    Use 0 to require that the object does not yet exist.
+    Upload full text to an object with headers that force inline render in browsers.
     """
     b = _bucket(bucket_name)
     blob = b.blob(key)
+    blob.cache_control = CACHE_CONTROL
+    blob.content_type = CONTENT_TYPE
+    blob.content_disposition = DISPOSITION
     if if_generation_match is None:
-        blob.upload_from_string(text, content_type=content_type)
+        blob.upload_from_string(text, content_type=CONTENT_TYPE)
     else:
-        blob.upload_from_string(
-            text, content_type=content_type, if_generation_match=if_generation_match
-        )
+        blob.upload_from_string(text, content_type=CONTENT_TYPE, if_generation_match=if_generation_match)
+    _persist_headers(blob)
 
 
-def append_jsonl_line(
-    bucket_name: str, key: str, line: str, max_retries: int = 2
-) -> None:
+def append_jsonl_line(bucket_name: str, dest_key: str, line: str) -> None:
     """
-    Safely append one NDJSON line using generation preconditions.
-    Retries if someone else wrote between read and write (e.g., restart overlap).
+    Atomic append using server-side compose:
+      1) write temp object containing 'line\\n' with correct headers
+      2) if dest exists -> compose [dest, temp] -> dest
+         else -> rewrite temp -> dest
+      3) set headers on dest
+    Safe under concurrent writers.
     """
-    for _ in range(max_retries + 1):
-        # Fast path: create if missing
-        if not object_exists(bucket_name, key):
-            try:
-                upload_text(bucket_name, key, line + "\n", if_generation_match=0)
-                return
-            except Exception:
-                # Object appeared between check and write; fall through
-                pass
+    b = _bucket(bucket_name)
+    temp_key = f"_tmp/append/{dest_key}.{uuid.uuid4().hex}.jsonl"
 
-        # Read-modify-write with optimistic lock
-        gen = get_generation(bucket_name, key)
-        current = download_text(bucket_name, key)
-        new_text = current + ("" if current.endswith("\n") or current == "" else "\n") + line + "\n"
+    # 1) temp write
+    temp_blob = b.blob(temp_key)
+    temp_blob.cache_control = CACHE_CONTROL
+    temp_blob.content_type = CONTENT_TYPE
+    temp_blob.content_disposition = DISPOSITION
+    temp_blob.upload_from_string((line + "\n").encode("utf-8"), content_type=CONTENT_TYPE)
+    _persist_headers(temp_blob)
+
+    dest_blob = b.blob(dest_key)
+
+    try:
+        if dest_blob.exists():
+            # 2a) compose to append
+            dest_blob.compose([dest_blob, temp_blob])
+            _persist_headers(dest_blob)
+        else:
+            # 2b) first write: move temp -> dest
+            dest_blob.rewrite(temp_blob)
+            _persist_headers(dest_blob)
+    finally:
+        # best-effort cleanup
         try:
-            upload_text(bucket_name, key, new_text, if_generation_match=gen)
-            return
+            temp_blob.delete()
         except Exception:
-            # Generation mismatch; someone else wrote. Retry.
-            continue
-
-    # Last attempt (very unlikely to reach)
-    gen = get_generation(bucket_name, key)
-    current = download_text(bucket_name, key)
-    new_text = current + ("" if current.endswith("\n") or current == "" else "\n") + line + "\n"
-    upload_text(bucket_name, key, new_text, if_generation_match=gen)
+            pass
 
 
 def list_prefix(bucket_name: str, prefix: str) -> List[str]:
-    """List object names under a prefix (non-recursive in UI sense; GCS is flat)."""
     b = _bucket(bucket_name)
     return [blob.name for blob in b.list_blobs(prefix=prefix)]
 
@@ -113,9 +121,8 @@ def compose_many(
     temp_prefix: str = "_tmp/compose/",
 ) -> None:
     """
-    Compose many small NDJSON parts into one destination object.
-    GCS compose supports up to 32 sources per call; we chain in batches.
-    The parts are concatenated in sorted order.
+    Compose many parts into a single destination. After each compose/rename, ensure
+    headers are set so browsers render inline.
     """
     if not sources:
         return
@@ -123,31 +130,32 @@ def compose_many(
     b = _bucket(bucket_name)
     sources = list(sorted(sources))
 
-    # If only one source, just copy/rewrite it to destination.
     if len(sources) == 1:
-        b.blob(destination).rewrite(b.blob(sources[0]))
+        dest = b.blob(destination)
+        dest.rewrite(b.blob(sources[0]))
+        _persist_headers(dest)
         return
 
-    def _compose_batch(src_names: List[str], out_name: str) -> None:
-        b.blob(out_name).compose([b.blob(n) for n in src_names])
+    def _compose(to_names: List[str], out_name: str):
+        dest = b.blob(out_name)
+        dest.compose([b.blob(n) for n in to_names])
+        _persist_headers(dest)
 
     temp_name = f"{temp_prefix}{destination}"
     i = 0
     chunk = 32
-    current: Optional[str] = None
-
+    current = None
     while i < len(sources):
-        batch = sources[i : i + chunk]
+        batch = sources[i:i + chunk]
         if current is None:
-            # First batch → temp
-            _compose_batch(batch, temp_name)
+            _compose(batch, temp_name)
             current = temp_name
         else:
-            # Compose current + next batch → new temp
             temp2 = f"{temp_name}.part{i}"
-            _compose_batch([current] + batch, temp2)
+            _compose([current] + batch, temp2)
             current = temp2
         i += chunk
 
-    # Final copy to destination
-    b.blob(destination).rewrite(b.blob(current))
+    dest = b.blob(destination)
+    dest.rewrite(b.blob(current))
+    _persist_headers(dest)
