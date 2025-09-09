@@ -153,14 +153,19 @@ class GCSStorageBackend(StorageBackend):
             logger.error(f"Error uploading {key}: {e}")
     
     def _set_web_friendly_headers(self, blob):
-        """Set headers optimized for web API consumption"""
-        blob.cache_control = "public, max-age=60"  # Cache for 1 minute
+        """Set headers optimized for web API consumption with minimal caching issues"""
+        # Use no-cache to ensure consistency between authenticated and public URLs
+        blob.cache_control = "no-cache, max-age=0, must-revalidate"
         blob.content_disposition = "inline"
-        # Set CORS-friendly headers
+        
+        # Set CORS-friendly headers and add cache-busting metadata
+        import time
         blob.metadata = {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type',
+            'updated-timestamp': str(int(time.time())),  # Force cache invalidation
+            'version': '2.0'  # Version to help track updates
         }
         blob.patch()
     
