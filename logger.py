@@ -141,12 +141,17 @@ def publish_5s_daily(cfg, bucket: str, ex: str, asset: str, now: datetime):
 def main():
     logger.info("Starting crypto data collector...")
     
-    # Run one-time header fix for existing files
+    # Run one-time baseline fix for existing files
     try:
-        from startup_fix import run_header_fix_once
-        run_header_fix_once()
+        from fix_baseline_storage import fix_all_gcs_files_now
+        logger.info("🔧 Running baseline storage fix...")
+        success = fix_all_gcs_files_now()
+        if success:
+            logger.info("✅ Baseline storage fix completed")
+        else:
+            logger.warning("⚠️  Baseline fix skipped (no GCS credentials)")
     except Exception as e:
-        logger.warning(f"Header fix failed (non-critical): {e}")
+        logger.warning(f"Baseline fix failed (non-critical): {e}")
     
     cfg = load_config()
     interval = int(cfg.get("interval_seconds", 5))

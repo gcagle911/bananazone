@@ -214,41 +214,73 @@ class GCSStorageBackend(StorageBackend):
         
         sources = sorted(sources)
         
+        # Use atomic composition with temporary destination to avoid race conditions
+        import uuid
+        temp_destination = f"_tmp/atomic_compose/{destination}.{uuid.uuid4().hex}.tmp"
+        
         try:
             if len(sources) == 1:
-                dest = self._bucket.blob(destination)
-                dest.rewrite(self._bucket.blob(sources[0]))
+                # Simple case - just copy with proper headers
+                temp_blob = self._bucket.blob(temp_destination)
+                temp_blob.rewrite(self._bucket.blob(sources[0]))
             else:
                 # Handle large compose operations (GCS limit is 32 objects per compose)
-                dest = self._bucket.blob(destination)
                 source_blobs = [self._bucket.blob(name) for name in sources]
+                
+                # Compose to temporary destination first
+                temp_blob = self._bucket.blob(temp_destination)
                 
                 # For simplicity, we'll do it in chunks of 30
                 chunk_size = 30
                 current = None
-                temp_prefix = f"_tmp/compose/{destination}"
+                temp_prefix = f"_tmp/compose_parts/{temp_destination}"
                 
                 for i in range(0, len(source_blobs), chunk_size):
                     chunk = source_blobs[i:i + chunk_size]
                     if current is None:
-                        dest.compose(chunk)
-                        current = dest
+                        temp_blob.compose(chunk)
+                        current = temp_blob
                     else:
                         temp_name = f"{temp_prefix}.part{i}"
-                        temp_blob = self._bucket.blob(temp_name)
-                        temp_blob.compose([current] + chunk)
-                        current = temp_blob
+                        temp_part = self._bucket.blob(temp_name)
+                        temp_part.compose([current] + chunk)
+                        current = temp_part
                 
-                if current != dest:
-                    dest.rewrite(current)
+                if current != temp_blob:
+                    temp_blob.rewrite(current)
+                    # Clean up intermediate parts
+                    try:
+                        current.delete()
+                    except:
+                        pass
             
-            # Set web-friendly headers
-            dest_blob = self._bucket.blob(destination)
-            self._set_web_friendly_headers(dest_blob)
+            # Set proper headers on temp file
+            self._set_web_friendly_headers(temp_blob)
             
-            logger.info(f"Composed {len(sources)} files to gs://{self.bucket_name}/{destination}")
+            # ATOMIC MOVE: Copy temp to final destination
+            final_blob = self._bucket.blob(destination)
+            final_blob.rewrite(temp_blob)
+            
+            # Set headers on final destination (ensuring consistency)
+            self._set_web_friendly_headers(final_blob)
+            
+            # Clean up temp file
+            try:
+                temp_blob.delete()
+            except:
+                pass
+            
+            logger.info(f"Atomically composed {len(sources)} files to gs://{self.bucket_name}/{destination}")
+            
         except Exception as e:
+            # Clean up temp file on error
+            try:
+                temp_blob = self._bucket.blob(temp_destination)
+                temp_blob.delete()
+            except:
+                pass
             logger.error(f"Error composing files to {destination}: {e}")
+            raise
 
 
 # Global storage instance
