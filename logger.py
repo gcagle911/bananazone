@@ -130,9 +130,10 @@ def main():
     publish_1m = int(cfg.get("publish_1min_minutes", 5))
     publish_5s = int(cfg.get("publish_5s_minutes", 60))
 
-    # exchanges
     exchanges = cfg["exchanges"]
     assets = cfg["assets"]
+
+    # Build clients
     clients: Dict[str, Any] = {}
     quotes: Dict[str, str] = {}
     for e in exchanges:
@@ -140,15 +141,18 @@ def main():
         quotes[name] = e["quote"]
         clients[name] = make_exchange(name)
 
-    # Load markets once per exchange with exponential backoff (handles Bybit WAF/403/429)
+    # Load markets ONLY for non-Bybit (Bybit load_markets hits a 403 WAF on Render)
     for name, client in clients.items():
-        for attempt in range(4):  # up to 4 tries (0..3)
+        if name == "bybit":
+            print("Skipping load_markets() for bybit to avoid 403 WAF on /v5/instruments-info")
+            continue
+        for attempt in range(4):
             try:
                 client.load_markets()
                 print(f"loaded markets: {name} ({len(getattr(client, 'markets', {}) or [])} symbols)")
                 break
             except (RateLimitExceeded, DDoSProtection) as e:
-                wait = 5 * (2 ** attempt)  # 5, 10, 20, 40s
+                wait = 5 * (2 ** attempt)
                 print(f"WAF/RL on {name} load_markets (attempt {attempt + 1}) -> sleep {wait}s: {e}")
                 time.sleep(wait)
             except ExchangeError as e:
@@ -158,7 +162,7 @@ def main():
                 print(f"Unexpected error loading markets for {name}: {e}")
                 time.sleep(3)
         else:
-            print(f"Could not load markets for {name}; will try direct fetches and skip if blocked.")
+            print(f"Could not load markets for {name}; proceeding without symbol map.")
 
     last_pub_1m: Dict[str, datetime] = {}
     last_pub_5s: Dict[str, datetime] = {}
@@ -173,30 +177,40 @@ def main():
                 for asset in assets:
                     sym = symbol_for(ex_name, asset, quote)
                     try:
-                        # If markets are known, ensure symbol exists; otherwise attempt anyway
+                        # If we have markets (non-Bybit), ensure symbol exists; for Bybit skip this check
                         markets = getattr(client, "markets", {}) or {}
-                        if markets and sym not in markets:
+                        if ex_name != "bybit" and markets and sym not in markets:
                             print(f"SKIP {ex_name} {asset}: symbol {sym} not in markets")
                             continue
 
-                        # Fetch with backoff on RL/WAF
+                        # Fetch with backoff on RL/DDoS/403
                         ob = None
-                        for attempt in range(3):
+                        for attempt in range(4):
                             try:
                                 ob = client.fetch_order_book(sym, limit=200)
                                 break
                             except (RateLimitExceeded, DDoSProtection) as e:
-                                wait = 2 * (2 ** attempt)  # 2s, 4s, 8s
+                                wait = 2 * (2 ** attempt)  # 2,4,8,16
                                 print(
                                     f"RateLimit/WAF {ex_name} {asset} on fetch_order_book "
                                     f"(attempt {attempt + 1}) -> sleep {wait}s: {e}"
                                 )
                                 time.sleep(wait)
                             except ExchangeError as e:
-                                print(f"ExchangeError on {ex_name} {asset} fetch: {e}")
+                                # ccxt often wraps HTTP 403/5xx as ExchangeError; backoff on 403 mentions too
+                                msg = str(e)
+                                if "403" in msg or "Forbidden" in msg:
+                                    wait = 2 * (2 ** attempt)
+                                    print(
+                                        f"403 Forbidden {ex_name} {asset} (attempt {attempt + 1}) "
+                                        f"-> sleep {wait}s"
+                                    )
+                                    time.sleep(wait)
+                                    continue
+                                print(f"ExchangeError on {ex_name} {asset}: {e}")
                                 break
                             except Exception as e:
-                                print(f"Unexpected error on {ex_name} {asset} fetch: {e}")
+                                print(f"Unexpected error on {ex_name} {asset}: {e}")
                                 time.sleep(1)
                         if ob is None:
                             # Give up this tick for this pair
