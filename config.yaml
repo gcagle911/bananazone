@@ -1,6 +1,6 @@
 # ====== CORE SETTINGS ======
-interval_seconds: 5               # pull orderbook every 5s
-gcs_bucket: "bananazone"          # your bucket
+interval_seconds: 5                 # fetch order book every 5 seconds
+gcs_bucket: "bananazone"            # your GCS bucket name
 
 exchanges:
   - name: coinbase
@@ -12,11 +12,15 @@ assets: [BTC, ETH, ADA, XRP]
 layers: [5, 50, 100]
 
 # ====== PUBLISH CADENCE ======
-publish_1min_minutes: 5           # near-live 1m daily must be <= 5 minutes behind
-publish_5s_minutes: 60            # compose 5s daily hourly
+publish_1min_minutes: 5             # rebuild & publish 1m data every 5 minutes (≤5m lag)
+publish_5s_minutes: 60              # compose 5s daily file every 60 minutes
 
 # ====== PATHS (NDJSON .jsonl) ======
 paths:
-  five_sec_minute: "{ex}/{asset}/5s/min/{day}/{hour}/{day}T{hour}:{minute}.jsonl"  # per-minute file; we append each 5s tick into it
-  five_sec_daily:  "{ex}/{asset}/5s/{day}.jsonl"                                    # built by compose from the minute files
-  one_min_daily:   "{ex}/{asset}/1min/{day}.jsonl"                                  # daily 1m file (upserted <= every 5m)
+  # 5-second data
+  five_sec_minute: "{ex}/{asset}/5s/min/{day}/{hour}/{day}T{hour}:{minute}.jsonl"  # per-minute bucket of 5s lines
+  five_sec_daily:  "{ex}/{asset}/5s/{day}.jsonl"                                   # composed hourly from the per-minute files
+
+  # 1-minute data (robust, no overwrite)
+  one_min_minute:  "{ex}/{asset}/1min/min/{day}/{hour}/{day}T{hour}:{minute}.jsonl" # one line per minute (source parts)
+  one_min_daily:   "{ex}/{asset}/1min/{day}.jsonl"                                   # composed from all per-minute parts
