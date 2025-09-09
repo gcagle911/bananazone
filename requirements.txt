@@ -1,0 +1,4 @@
+ccxt==4.3.80
+pyyaml==6.0.2
+google-cloud-storage==2.17.0
+python-dateutil==2.9.0.post0
