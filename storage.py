@@ -145,13 +145,24 @@ class GCSStorageBackend(StorageBackend):
     def upload_text(self, key: str, text: str) -> None:
         blob = self._bucket.blob(key)
         try:
-            blob.upload_from_string(text, content_type="text/plain; charset=utf-8")
-            blob.cache_control = "no-cache, max-age=0"
-            blob.content_disposition = "inline"
-            blob.patch()
+            # Use application/json for better API consumption
+            blob.upload_from_string(text, content_type="application/json; charset=utf-8")
+            self._set_web_friendly_headers(blob)
             logger.debug(f"Uploaded {len(text)} chars to gs://{self.bucket_name}/{key}")
         except Exception as e:
             logger.error(f"Error uploading {key}: {e}")
+    
+    def _set_web_friendly_headers(self, blob):
+        """Set headers optimized for web API consumption"""
+        blob.cache_control = "public, max-age=60"  # Cache for 1 minute
+        blob.content_disposition = "inline"
+        # Set CORS-friendly headers
+        blob.metadata = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+        }
+        blob.patch()
     
     def append_jsonl_line(self, key: str, line: str) -> None:
         # Atomic append using server-side compose
@@ -161,7 +172,7 @@ class GCSStorageBackend(StorageBackend):
         temp_blob = self._bucket.blob(temp_key)
         try:
             temp_blob.upload_from_string((line + "\n").encode("utf-8"), 
-                                       content_type="text/plain; charset=utf-8")
+                                       content_type="application/json; charset=utf-8")
             
             dest_blob = self._bucket.blob(key)
             
@@ -172,10 +183,8 @@ class GCSStorageBackend(StorageBackend):
                 # First write: move temp -> dest
                 dest_blob.rewrite(temp_blob)
             
-            # Set headers
-            dest_blob.cache_control = "no-cache, max-age=0"
-            dest_blob.content_disposition = "inline"
-            dest_blob.patch()
+            # Set web-friendly headers
+            self._set_web_friendly_headers(dest_blob)
             
             logger.debug(f"Appended line to gs://{self.bucket_name}/{key}")
         except Exception as e:
@@ -228,11 +237,9 @@ class GCSStorageBackend(StorageBackend):
                 if current != dest:
                     dest.rewrite(current)
             
-            # Set headers
+            # Set web-friendly headers
             dest_blob = self._bucket.blob(destination)
-            dest_blob.cache_control = "no-cache, max-age=0"
-            dest_blob.content_disposition = "inline"
-            dest_blob.patch()
+            self._set_web_friendly_headers(dest_blob)
             
             logger.info(f"Composed {len(sources)} files to gs://{self.bucket_name}/{destination}")
         except Exception as e:
