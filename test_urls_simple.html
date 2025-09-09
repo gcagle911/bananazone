@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Crypto Data URLs</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; }
+        .loading { background-color: #fff3cd; border: 1px solid #ffeaa7; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Crypto Data URL Tester</h1>
+    <p>This will test if your GCS URLs are working correctly for Vercel integration.</p>
+    
+    <button onclick="testUrls()">🚀 Test URLs</button>
+    <button onclick="clearResults()">🧹 Clear Results</button>
+    
+    <div id="results"></div>
+
+    <script>
+        const bucketName = 'bananazone';
+        const today = new Date().toISOString().split('T')[0];
+        
+        const testUrls = [
+            `https://storage.googleapis.com/${bucketName}/coinbase/BTC/1min/${today}.jsonl`,
+            `https://storage.googleapis.com/${bucketName}/coinbase/ETH/1min/${today}.jsonl`,
+            `https://storage.googleapis.com/${bucketName}/kraken/BTC/1min/${today}.jsonl`,
+            `https://storage.googleapis.com/${bucketName}/coinbase/BTC/5s/${today}.jsonl`
+        ];
+
+        function addResult(message, type = 'loading') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+            return div;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function testUrl(url) {
+            const resultDiv = addResult(`🔄 Testing: ${url}`, 'loading');
+            
+            try {
+                console.log(`Testing: ${url}`);
+                
+                const response = await fetch(url);
+                
+                const status = response.status;
+                const contentType = response.headers.get('content-type');
+                const contentDisposition = response.headers.get('content-disposition');
+                
+                if (status === 200) {
+                    const text = await response.text();
+                    const lines = text.trim().split('\n').filter(line => line.trim());
+                    
+                    if (lines.length > 0) {
+                        try {
+                            const firstRecord = JSON.parse(lines[0]);
+                            const lastRecord = JSON.parse(lines[lines.length - 1]);
+                            
+                            resultDiv.className = 'result success';
+                            resultDiv.innerHTML = `
+                                ✅ <strong>SUCCESS:</strong> ${url}<br>
+                                📊 Status: ${status}<br>
+                                📋 Content-Type: ${contentType}<br>
+                                📋 Content-Disposition: ${contentDisposition}<br>
+                                📈 Records: ${lines.length}<br>
+                                🕐 First: ${firstRecord.t} (${firstRecord.exchange} ${firstRecord.asset}: $${firstRecord.mid})<br>
+                                🕐 Last: ${lastRecord.t} (${lastRecord.exchange} ${lastRecord.asset}: $${lastRecord.mid})
+                            `;
+                        } catch (parseError) {
+                            resultDiv.className = 'result error';
+                            resultDiv.innerHTML = `
+                                ❌ <strong>PARSE ERROR:</strong> ${url}<br>
+                                📊 Status: ${status} (got data but couldn't parse JSON)<br>
+                                📋 Content-Type: ${contentType}<br>
+                                🔍 Error: ${parseError.message}
+                            `;
+                        }
+                    } else {
+                        resultDiv.className = 'result error';
+                        resultDiv.innerHTML = `
+                            ⚠️ <strong>EMPTY FILE:</strong> ${url}<br>
+                            📊 Status: ${status}<br>
+                            📋 Content-Type: ${contentType}<br>
+                            📄 File exists but contains no data
+                        `;
+                    }
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `
+                        ❌ <strong>HTTP ERROR:</strong> ${url}<br>
+                        📊 Status: ${status}<br>
+                        📋 Content-Type: ${contentType}<br>
+                        ${status === 404 ? '📄 File not found (may not exist for this date)' : ''}
+                        ${status === 403 ? '🔒 Access denied (bucket may not be public)' : ''}
+                    `;
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    ❌ <strong>NETWORK ERROR:</strong> ${url}<br>
+                    🔍 Error: ${error.message}<br>
+                    💡 This might be a CORS issue or network problem
+                `;
+            }
+        }
+
+        async function testUrls() {
+            clearResults();
+            
+            addResult(`🎯 Testing URLs for date: ${today}`, 'loading');
+            addResult(`📍 Bucket: ${bucketName}`, 'loading');
+            
+            for (const url of testUrls) {
+                await testUrl(url);
+                // Small delay to avoid overwhelming the server
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            addResult(`✅ Testing complete! Check results above.`, 'success');
+        }
+
+        // Auto-test on page load
+        window.onload = () => {
+            setTimeout(testUrls, 1000);
+        };
+    </script>
+</body>
+</html>
