@@ -315,4 +315,25 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import os
+    import sys
+    
+    # Check if we should use the improved collector
+    use_improved = os.environ.get("USE_IMPROVED_COLLECTOR", "true").lower() == "true"
+    
+    if use_improved:
+        try:
+            logger.info("🚀 Using improved collector with guaranteed minute scheduling")
+            from guaranteed_minute_scheduler import main as improved_main
+            improved_main()
+        except ImportError as e:
+            logger.warning(f"Failed to import improved collector: {e}")
+            logger.info("🔄 Falling back to standard collector")
+            main()
+        except Exception as e:
+            logger.error(f"Improved collector failed: {e}")
+            logger.info("🔄 Falling back to standard collector")
+            main()
+    else:
+        logger.info("📡 Using standard collector")
+        main()
