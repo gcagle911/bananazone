@@ -31,6 +31,10 @@ def fmt_paths(cfg, ex: str, asset: str, t: datetime) -> Dict[str, str]:
             ex=ex, asset=asset, day=day, hour=hour, minute=minute
         ),
         "five_sec_daily": p["five_sec_daily"].format(ex=ex, asset=asset, day=day),
+        # NEW per-minute 1m file
+        "one_min_minute": p["one_min_minute"].format(
+            ex=ex, asset=asset, day=day, hour=hour, minute=minute
+        ),
         "one_min_daily": p["one_min_daily"].format(ex=ex, asset=asset, day=day),
     }
 
@@ -63,41 +67,32 @@ def aggregate_minute_from_5s(
     return agg
 
 
-def upsert_minute_lines(bucket: str, one_min_daily_key: str, minute_rows: List[Dict[str, Any]]):
-    """Upsert minute rows into daily 1m NDJSON by t field."""
-    text = download_text(bucket, one_min_daily_key)
-    existing = {}
-    if text:
-        for line in text.splitlines():
-            if not line.strip():
-                continue
-            try:
-                obj = json.loads(line)
-                existing[obj.get("t")] = obj
-            except Exception:
-                continue
-    for row in minute_rows:
-        existing[row["t"]] = row
-    lines = [json.dumps(existing[t], separators=(",", ":")) for t in sorted(existing.keys())]
-    upload_text(bucket, one_min_daily_key, "\n".join(lines) + ("\n" if lines else ""))
-
-
 def publish_1min_nearlive(cfg, bucket: str, ex: str, asset: str, now: datetime):
-    """Every publish_1min_minutes, rebuild last window minutes from per-minute 5s files and upsert."""
+    """
+    Every publish_1min_minutes, rebuild the last window of minutes from per-minute 5s files,
+    write EACH minute as its own one-line NDJSON object under 1min/min/..., then COMPOSE all
+    1min/min/... files for the day into the daily 1min/YYYY-MM-DD.jsonl.
+
+    This avoids read-modify-write overwrites and guarantees we never "roll" to 5m only.
+    """
     minutes_back = int(cfg.get("publish_1min_minutes", 5))
     end_minute = now.replace(second=0, microsecond=0)
     start_minute = end_minute - timedelta(minutes=minutes_back - 1)
-    minute_rows = []
+
+    # 1) Build per-minute rows for the window and store each to its own object
     for i in range(minutes_back):
         m = start_minute + timedelta(minutes=i)
-        path = fmt_paths(cfg, ex, asset, m)["five_sec_minute"]
-        text = download_text(bucket, path)
+        paths = fmt_paths(cfg, ex, asset, m)
+        src_5s = paths["five_sec_minute"]
+        dst_1m_min = paths["one_min_minute"]
+
+        text = download_text(bucket, src_5s)
         if not text:
             continue
-        records = []
+
+        records: List[Dict[str, Any]] = []
         for line in text.splitlines():
-            line = line.strip()
-            if not line:
+            if not line.strip():
                 continue
             try:
                 records.append(json.loads(line))
@@ -105,10 +100,19 @@ def publish_1min_nearlive(cfg, bucket: str, ex: str, asset: str, now: datetime):
                 pass
         if not records:
             continue
-        minute_rows.append(aggregate_minute_from_5s(records, m, ex, asset))
-    if minute_rows:
-        one_min_daily_key = fmt_paths(cfg, ex, asset, now)["one_min_daily"]
-        upsert_minute_lines(bucket, one_min_daily_key, minute_rows)
+
+        row = aggregate_minute_from_5s(records, m, ex, asset)
+        # Each per-minute file contains exactly ONE line
+        upload_text(bucket, dst_1m_min, json.dumps(row, separators=(",", ":")) + "\n")
+
+    # 2) Compose ALL per-minute 1m files for the day → daily 1m NDJSON
+    day = now.strftime("%Y-%m-%d")
+    prefix = f"{ex}/{asset}/1min/min/{day}/"
+    sources = list_prefix(bucket, prefix)
+    if not sources:
+        return
+    dest = fmt_paths(cfg, ex, asset, now)["one_min_daily"]
+    compose_many(bucket, sources, dest)
 
 
 def publish_5s_daily(cfg, bucket: str, ex: str, asset: str, now: datetime):
@@ -130,39 +134,26 @@ def main():
     publish_1m = int(cfg.get("publish_1min_minutes", 5))
     publish_5s = int(cfg.get("publish_5s_minutes", 60))
 
-    exchanges = cfg["exchanges"]
+    exchanges_cfg = cfg["exchanges"]
     assets = cfg["assets"]
 
-    # Build clients
     clients: Dict[str, Any] = {}
     quotes: Dict[str, str] = {}
-    for e in exchanges:
+    for e in exchanges_cfg:
         name = e["name"]
         quotes[name] = e["quote"]
         clients[name] = make_exchange(name)
 
-    # Load markets ONLY for non-Bybit (Bybit load_markets hits a 403 WAF on Render)
+    # Load markets for exchanges that allow it
     for name, client in clients.items():
-        if name == "bybit":
-            print("Skipping load_markets() for bybit to avoid 403 WAF on /v5/instruments-info")
+        if name == "bybit":  # if you ever re-enable bybit
+            print("Skipping load_markets() for bybit")
             continue
-        for attempt in range(4):
-            try:
-                client.load_markets()
-                print(f"loaded markets: {name} ({len(getattr(client, 'markets', {}) or [])} symbols)")
-                break
-            except (RateLimitExceeded, DDoSProtection) as e:
-                wait = 5 * (2 ** attempt)
-                print(f"WAF/RL on {name} load_markets (attempt {attempt + 1}) -> sleep {wait}s: {e}")
-                time.sleep(wait)
-            except ExchangeError as e:
-                print(f"ExchangeError loading markets for {name}: {e}")
-                break
-            except Exception as e:
-                print(f"Unexpected error loading markets for {name}: {e}")
-                time.sleep(3)
-        else:
-            print(f"Could not load markets for {name}; proceeding without symbol map.")
+        try:
+            client.load_markets()
+            print(f"loaded markets: {name} ({len(getattr(client, 'markets', {}) or [])} symbols)")
+        except Exception as e:
+            print(f"load_markets failed for {name}: {e}")
 
     last_pub_1m: Dict[str, datetime] = {}
     last_pub_5s: Dict[str, datetime] = {}
@@ -177,45 +168,7 @@ def main():
                 for asset in assets:
                     sym = symbol_for(ex_name, asset, quote)
                     try:
-                        # If we have markets (non-Bybit), ensure symbol exists; for Bybit skip this check
-                        markets = getattr(client, "markets", {}) or {}
-                        if ex_name != "bybit" and markets and sym not in markets:
-                            print(f"SKIP {ex_name} {asset}: symbol {sym} not in markets")
-                            continue
-
-                        # Fetch with backoff on RL/DDoS/403
-                        ob = None
-                        for attempt in range(4):
-                            try:
-                                ob = client.fetch_order_book(sym, limit=200)
-                                break
-                            except (RateLimitExceeded, DDoSProtection) as e:
-                                wait = 2 * (2 ** attempt)  # 2,4,8,16
-                                print(
-                                    f"RateLimit/WAF {ex_name} {asset} on fetch_order_book "
-                                    f"(attempt {attempt + 1}) -> sleep {wait}s: {e}"
-                                )
-                                time.sleep(wait)
-                            except ExchangeError as e:
-                                # ccxt often wraps HTTP 403/5xx as ExchangeError; backoff on 403 mentions too
-                                msg = str(e)
-                                if "403" in msg or "Forbidden" in msg:
-                                    wait = 2 * (2 ** attempt)
-                                    print(
-                                        f"403 Forbidden {ex_name} {asset} (attempt {attempt + 1}) "
-                                        f"-> sleep {wait}s"
-                                    )
-                                    time.sleep(wait)
-                                    continue
-                                print(f"ExchangeError on {ex_name} {asset}: {e}")
-                                break
-                            except Exception as e:
-                                print(f"Unexpected error on {ex_name} {asset}: {e}")
-                                time.sleep(1)
-                        if ob is None:
-                            # Give up this tick for this pair
-                            continue
-
+                        ob = client.fetch_order_book(sym, limit=200)
                         metrics = compute_metrics(ob, layers)
                         record = {
                             "t": t_iso,
@@ -230,17 +183,14 @@ def main():
                             "depth_bids": metrics["depth_bids"],
                             "depth_asks": metrics["depth_asks"],
                         }
-                        # Append into the current minute's 5s NDJSON file
+                        # Append this 5s tick into the current minute's NDJSON file
                         path_keys = fmt_paths(cfg, ex_name, asset, now)
-                        append_jsonl_line(
-                            bucket, path_keys["five_sec_minute"], json.dumps(record, separators=(",", ":"))
-                        )
-
+                        append_jsonl_line(bucket, path_keys["five_sec_minute"], json.dumps(record, separators=(",", ":")))
                     except Exception as e:
                         print(f"ERROR fetch/write {ex_name} {asset}: {e}")
                         traceback.print_exc()
 
-                    # 1m near-live publish (<=5m lag)
+                    # 1m near-live compose (<=5m lag)
                     pair_key = f"{ex_name}:{asset}"
                     if (last_pub_1m.get(pair_key) is None) or (
                         (now - last_pub_1m[pair_key]) >= timedelta(minutes=publish_1m)
