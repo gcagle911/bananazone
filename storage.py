@@ -153,10 +153,13 @@ class GCSStorageBackend(StorageBackend):
             logger.error(f"Error uploading {key}: {e}")
     
     def _set_web_friendly_headers(self, blob):
-        """Set headers optimized for web API consumption with minimal caching issues"""
+        """Set headers optimized for web API consumption AND GCS Console viewing"""
         # Use no-cache to ensure consistency between authenticated and public URLs
-        blob.cache_control = "no-cache, max-age=0, must-revalidate"
-        blob.content_disposition = "inline"
+        blob.cache_control = "no-cache, max-age=0"
+        
+        # Don't set content-disposition to allow GCS Console to display files properly
+        # This makes files viewable in GCS Console while still working for web access
+        blob.content_disposition = None
         
         # Set CORS-friendly headers and add cache-busting metadata
         import time
@@ -165,7 +168,8 @@ class GCSStorageBackend(StorageBackend):
             'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type',
             'updated-timestamp': str(int(time.time())),  # Force cache invalidation
-            'version': '2.0'  # Version to help track updates
+            'version': '3.0',  # Version to help track updates
+            'gcs-console-viewable': 'true'  # Indicate this file is optimized for console viewing
         }
         blob.patch()
     
