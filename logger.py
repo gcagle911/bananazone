@@ -1,6 +1,7 @@
 import json
 import time
 import traceback
+import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List
 
@@ -9,7 +10,18 @@ from ccxt.base.errors import RateLimitExceeded, DDoSProtection, ExchangeError
 
 from exchanges import make_exchange, symbol_for
 from metrics import compute_metrics
-from gcs import append_jsonl_line, download_text, upload_text, list_prefix, compose_many
+from storage import append_jsonl_line, download_text, upload_text, list_prefix, compose_many, get_storage_backend
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('crypto_logger.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 
 def load_config(path: str = "config.yaml") -> Dict[str, Any]:
@@ -127,6 +139,8 @@ def publish_5s_daily(cfg, bucket: str, ex: str, asset: str, now: datetime):
 
 
 def main():
+    logger.info("Starting crypto data collector...")
+    
     cfg = load_config()
     interval = int(cfg.get("interval_seconds", 5))
     bucket = cfg["gcs_bucket"]
@@ -136,40 +150,77 @@ def main():
 
     exchanges_cfg = cfg["exchanges"]
     assets = cfg["assets"]
+    
+    # Initialize storage backend
+    storage_backend = get_storage_backend(bucket)
+    logger.info(f"Storage backend initialized for bucket: {bucket}")
 
     clients: Dict[str, Any] = {}
     quotes: Dict[str, str] = {}
     for e in exchanges_cfg:
         name = e["name"]
         quotes[name] = e["quote"]
-        clients[name] = make_exchange(name)
+        try:
+            clients[name] = make_exchange(name)
+            logger.info(f"Initialized exchange client: {name}")
+        except Exception as e:
+            logger.error(f"Failed to initialize {name}: {e}")
 
     # Load markets for exchanges that allow it
     for name, client in clients.items():
         if name == "bybit":  # if you ever re-enable bybit
-            print("Skipping load_markets() for bybit")
+            logger.info("Skipping load_markets() for bybit")
             continue
         try:
             client.load_markets()
-            print(f"loaded markets: {name} ({len(getattr(client, 'markets', {}) or [])} symbols)")
+            market_count = len(getattr(client, 'markets', {}) or [])
+            logger.info(f"Loaded markets: {name} ({market_count} symbols)")
         except Exception as e:
-            print(f"load_markets failed for {name}: {e}")
+            logger.error(f"load_markets failed for {name}: {e}")
 
     last_pub_1m: Dict[str, datetime] = {}
     last_pub_5s: Dict[str, datetime] = {}
+    
+    # Track statistics
+    stats = {
+        "total_fetches": 0,
+        "successful_fetches": 0,
+        "failed_fetches": 0,
+        "last_success_time": None
+    }
 
     try:
+        logger.info(f"Starting data collection loop (interval: {interval}s)")
+        
         while True:
             now = datetime.now(timezone.utc)
             t_iso = iso_utc(now)
+            cycle_start = time.time()
 
             for ex_name, client in clients.items():
                 quote = quotes[ex_name]
                 for asset in assets:
                     sym = symbol_for(ex_name, asset, quote)
+                    stats["total_fetches"] += 1
+                    
                     try:
+                        # Fetch order book data
                         ob = client.fetch_order_book(sym, limit=200)
+                        
+                        # Validate order book data
+                        if not ob or not ob.get('bids') or not ob.get('asks'):
+                            logger.warning(f"Invalid order book data for {ex_name} {asset}")
+                            stats["failed_fetches"] += 1
+                            continue
+                            
                         metrics = compute_metrics(ob, layers)
+                        
+                        # Validate metrics
+                        if not metrics or metrics.get("mid") is None:
+                            logger.warning(f"Invalid metrics for {ex_name} {asset}")
+                            stats["failed_fetches"] += 1
+                            continue
+                        
                         record = {
                             "t": t_iso,
                             "exchange": ex_name,
@@ -183,12 +234,28 @@ def main():
                             "depth_bids": metrics["depth_bids"],
                             "depth_asks": metrics["depth_asks"],
                         }
+                        
                         # Append this 5s tick into the current minute's NDJSON file
                         path_keys = fmt_paths(cfg, ex_name, asset, now)
                         append_jsonl_line(bucket, path_keys["five_sec_minute"], json.dumps(record, separators=(",", ":")))
+                        
+                        stats["successful_fetches"] += 1
+                        stats["last_success_time"] = now
+                        
+                        logger.debug(f"Recorded data: {ex_name} {asset} mid={metrics['mid']:.4f}")
+                        
+                    except (RateLimitExceeded, DDoSProtection) as e:
+                        logger.warning(f"Rate limit for {ex_name} {asset}: {e}")
+                        stats["failed_fetches"] += 1
+                        time.sleep(1)  # Brief pause for rate limits
+                        
+                    except ExchangeError as e:
+                        logger.error(f"Exchange error {ex_name} {asset}: {e}")
+                        stats["failed_fetches"] += 1
+                        
                     except Exception as e:
-                        print(f"ERROR fetch/write {ex_name} {asset}: {e}")
-                        traceback.print_exc()
+                        logger.error(f"Unexpected error {ex_name} {asset}: {e}")
+                        stats["failed_fetches"] += 1
 
                     # 1m near-live compose (<=5m lag)
                     pair_key = f"{ex_name}:{asset}"
@@ -198,8 +265,9 @@ def main():
                         try:
                             publish_1min_nearlive(cfg, bucket, ex_name, asset, now)
                             last_pub_1m[pair_key] = now
+                            logger.info(f"Published 1min data for {pair_key}")
                         except Exception as e:
-                            print(f"ERROR publish 1m {pair_key}: {e}")
+                            logger.error(f"Failed to publish 1m {pair_key}: {e}")
 
                     # 5s daily compose (hourly default)
                     if (last_pub_5s.get(pair_key) is None) or (
@@ -208,17 +276,35 @@ def main():
                         try:
                             publish_5s_daily(cfg, bucket, ex_name, asset, now)
                             last_pub_5s[pair_key] = now
+                            logger.info(f"Published 5s daily data for {pair_key}")
                         except Exception as e:
-                            print(f"ERROR publish 5s {pair_key}: {e}")
+                            logger.error(f"Failed to publish 5s {pair_key}: {e}")
 
-            time.sleep(max(1, interval))
+            # Log statistics every 10 cycles
+            if stats["total_fetches"] % (len(clients) * len(assets) * 10) == 0:
+                success_rate = (stats["successful_fetches"] / stats["total_fetches"] * 100) if stats["total_fetches"] > 0 else 0
+                logger.info(f"Stats: {stats['total_fetches']} total, {stats['successful_fetches']} success, "
+                           f"{stats['failed_fetches']} failed ({success_rate:.1f}% success rate)")
+            
+            # Sleep for the remaining interval time
+            cycle_time = time.time() - cycle_start
+            sleep_time = max(0.1, interval - cycle_time)
+            time.sleep(sleep_time)
+            
+    except KeyboardInterrupt:
+        logger.info("Received interrupt signal, shutting down...")
+    except Exception as e:
+        logger.error(f"Unexpected error in main loop: {e}")
+        traceback.print_exc()
     finally:
+        logger.info("Cleaning up exchange connections...")
         for c in clients.values():
             try:
                 if hasattr(c, "close"):
                     c.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Error closing client: {e}")
+        logger.info("Crypto data collector stopped.")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,41 @@
+2025-09-09 17:44:34,743 - __main__ - INFO - Starting crypto data collector...
+2025-09-09 17:44:34,744 - storage - INFO - Using local storage backend (GCS not available or configured)
+2025-09-09 17:44:34,745 - storage - INFO - Using local storage at: /workspace/data
+2025-09-09 17:44:34,745 - __main__ - INFO - Storage backend initialized for bucket: bananazone
+2025-09-09 17:44:34,747 - __main__ - INFO - Initialized exchange client: coinbase
+2025-09-09 17:44:34,750 - __main__ - INFO - Initialized exchange client: kraken
+2025-09-09 17:44:35,897 - __main__ - INFO - Loaded markets: coinbase (1023 symbols)
+2025-09-09 17:44:37,073 - __main__ - INFO - Loaded markets: kraken (1211 symbols)
+2025-09-09 17:44:37,074 - __main__ - INFO - Starting data collection loop (interval: 5s)
+2025-09-09 17:44:37,163 - storage - INFO - Composed 1 files into data/coinbase/BTC/1min/2025-09-09.jsonl
+2025-09-09 17:44:37,163 - __main__ - INFO - Published 1min data for coinbase:BTC
+2025-09-09 17:44:37,163 - storage - INFO - Composed 1 files into data/coinbase/BTC/5s/2025-09-09.jsonl
+2025-09-09 17:44:37,163 - __main__ - INFO - Published 5s daily data for coinbase:BTC
+2025-09-09 17:44:37,270 - storage - INFO - Composed 1 files into data/coinbase/ETH/1min/2025-09-09.jsonl
+2025-09-09 17:44:37,270 - __main__ - INFO - Published 1min data for coinbase:ETH
+2025-09-09 17:44:37,271 - storage - INFO - Composed 1 files into data/coinbase/ETH/5s/2025-09-09.jsonl
+2025-09-09 17:44:37,271 - __main__ - INFO - Published 5s daily data for coinbase:ETH
+2025-09-09 17:44:37,367 - storage - INFO - Composed 1 files into data/coinbase/ADA/1min/2025-09-09.jsonl
+2025-09-09 17:44:37,367 - __main__ - INFO - Published 1min data for coinbase:ADA
+2025-09-09 17:44:37,367 - storage - INFO - Composed 1 files into data/coinbase/ADA/5s/2025-09-09.jsonl
+2025-09-09 17:44:37,367 - __main__ - INFO - Published 5s daily data for coinbase:ADA
+2025-09-09 17:44:37,523 - storage - INFO - Composed 1 files into data/coinbase/XRP/1min/2025-09-09.jsonl
+2025-09-09 17:44:37,523 - __main__ - INFO - Published 1min data for coinbase:XRP
+2025-09-09 17:44:37,524 - storage - INFO - Composed 1 files into data/coinbase/XRP/5s/2025-09-09.jsonl
+2025-09-09 17:44:37,524 - __main__ - INFO - Published 5s daily data for coinbase:XRP
+2025-09-09 17:44:38,186 - storage - INFO - Composed 1 files into data/kraken/BTC/1min/2025-09-09.jsonl
+2025-09-09 17:44:38,186 - __main__ - INFO - Published 1min data for kraken:BTC
+2025-09-09 17:44:38,186 - storage - INFO - Composed 1 files into data/kraken/BTC/5s/2025-09-09.jsonl
+2025-09-09 17:44:38,186 - __main__ - INFO - Published 5s daily data for kraken:BTC
+2025-09-09 17:44:39,392 - storage - INFO - Composed 1 files into data/kraken/ETH/1min/2025-09-09.jsonl
+2025-09-09 17:44:39,392 - __main__ - INFO - Published 1min data for kraken:ETH
+2025-09-09 17:44:39,393 - storage - INFO - Composed 1 files into data/kraken/ETH/5s/2025-09-09.jsonl
+2025-09-09 17:44:39,393 - __main__ - INFO - Published 5s daily data for kraken:ETH
+2025-09-09 17:44:40,539 - storage - INFO - Composed 1 files into data/kraken/ADA/1min/2025-09-09.jsonl
+2025-09-09 17:44:40,539 - __main__ - INFO - Published 1min data for kraken:ADA
+2025-09-09 17:44:40,540 - storage - INFO - Composed 1 files into data/kraken/ADA/5s/2025-09-09.jsonl
+2025-09-09 17:44:40,540 - __main__ - INFO - Published 5s daily data for kraken:ADA
+2025-09-09 17:44:41,754 - storage - INFO - Composed 1 files into data/kraken/XRP/1min/2025-09-09.jsonl
+2025-09-09 17:44:41,754 - __main__ - INFO - Published 1min data for kraken:XRP
+2025-09-09 17:44:41,754 - storage - INFO - Composed 1 files into data/kraken/XRP/5s/2025-09-09.jsonl
+2025-09-09 17:44:41,754 - __main__ - INFO - Published 5s daily data for kraken:XRP
