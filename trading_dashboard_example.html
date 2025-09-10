@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto ML Trading Dashboard</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            margin: 0; padding: 20px; background: #0a0a0a; color: #fff;
+        }
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { 
+            background: #1a1a1a; border-radius: 12px; padding: 20px; 
+            border: 1px solid #333; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .card h3 { margin: 0 0 15px 0; color: #4ade80; }
+        .signal { 
+            padding: 10px; margin: 8px 0; border-radius: 8px; 
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .signal.bullish { background: rgba(34, 197, 94, 0.2); border-left: 4px solid #22c55e; }
+        .signal.bearish { background: rgba(239, 68, 68, 0.2); border-left: 4px solid #ef4444; }
+        .signal.hold { background: rgba(156, 163, 175, 0.2); border-left: 4px solid #9ca3af; }
+        .strength { font-weight: bold; }
+        .arbitrage { 
+            background: rgba(251, 191, 36, 0.2); border-left: 4px solid #fbbf24;
+            padding: 10px; margin: 8px 0; border-radius: 8px;
+        }
+        .correlation { 
+            display: flex; justify-content: space-between; padding: 8px 0; 
+            border-bottom: 1px solid #333;
+        }
+        .health-good { color: #22c55e; }
+        .health-warning { color: #fbbf24; }
+        .health-bad { color: #ef4444; }
+        .timestamp { color: #9ca3af; font-size: 0.9em; }
+        .refresh-btn { 
+            background: #3b82f6; color: white; border: none; padding: 8px 16px; 
+            border-radius: 6px; cursor: pointer; margin-bottom: 15px;
+        }
+        .refresh-btn:hover { background: #2563eb; }
+        .loading { opacity: 0.6; }
+    </style>
+</head>
+<body>
+    <h1>🤖 Crypto ML Trading Dashboard</h1>
+    <button class="refresh-btn" onclick="loadInsights()">🔄 Refresh Data</button>
+    <div class="timestamp" id="lastUpdate">Loading...</div>
+    
+    <div class="dashboard">
+        <!-- Trading Signals -->
+        <div class="card">
+            <h3>🎯 Trading Signals</h3>
+            <div id="signals">Loading signals...</div>
+        </div>
+        
+        <!-- Arbitrage Opportunities -->
+        <div class="card">
+            <h3>💰 Arbitrage Opportunities</h3>
+            <div id="arbitrage">Loading arbitrage data...</div>
+        </div>
+        
+        <!-- Top Correlations -->
+        <div class="card">
+            <h3>📊 Top Correlations</h3>
+            <div id="correlations">Loading correlations...</div>
+        </div>
+        
+        <!-- Exchange Health -->
+        <div class="card">
+            <h3>🏥 Exchange Health</h3>
+            <div id="health">Loading health data...</div>
+        </div>
+        
+        <!-- Market Overview -->
+        <div class="card">
+            <h3>📈 Market Overview</h3>
+            <div id="overview">Loading market data...</div>
+        </div>
+        
+        <!-- Pattern Summary -->
+        <div class="card">
+            <h3>🔍 Pattern Detection</h3>
+            <div id="patterns">Loading patterns...</div>
+        </div>
+    </div>
+
+    <script>
+        let insights = null;
+        
+        async function loadInsights() {
+            const lastUpdateEl = document.getElementById('lastUpdate');
+            lastUpdateEl.textContent = 'Loading...';
+            
+            // Add loading state
+            document.querySelectorAll('.card').forEach(card => card.classList.add('loading'));
+            
+            try {
+                // Fetch latest ML insights
+                const response = await fetch('https://storage.googleapis.com/bananazone/ml_insights/latest.json?t=' + Date.now(), {
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                insights = await response.json();
+                
+                // Update all sections
+                updateSignals(insights.current_signals || []);
+                updateArbitrage(insights.arbitrage_opportunities || []);
+                updateCorrelations(insights.top_correlations || []);
+                updateHealth(insights.exchange_health || {});
+                updateOverview(insights.market_overview || {});
+                updatePatterns(insights.pattern_summary || {});
+                
+                // Update timestamp
+                const timestamp = new Date(insights.timestamp).toLocaleString();
+                lastUpdateEl.textContent = `Last updated: ${timestamp}`;
+                
+            } catch (error) {
+                console.error('Failed to load insights:', error);
+                lastUpdateEl.textContent = `Error loading data: ${error.message}`;
+            }
+            
+            // Remove loading state
+            document.querySelectorAll('.card').forEach(card => card.classList.remove('loading'));
+        }
+        
+        function updateSignals(signals) {
+            const container = document.getElementById('signals');
+            
+            if (!signals || signals.length === 0) {
+                container.innerHTML = '<div>No active signals</div>';
+                return;
+            }
+            
+            const html = signals.map(signal => `
+                <div class="signal ${signal.direction}">
+                    <div>
+                        <strong>${signal.asset}</strong> on ${signal.exchange}<br>
+                        <small>${signal.data_type}</small>
+                    </div>
+                    <div>
+                        <div class="strength">${signal.direction.toUpperCase()}</div>
+                        <small>Strength: ${(signal.strength * 100).toFixed(0)}%</small><br>
+                        <small>Confidence: ${(signal.confidence * 100).toFixed(0)}%</small>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = html;
+        }
+        
+        function updateArbitrage(opportunities) {
+            const container = document.getElementById('arbitrage');
+            
+            if (!opportunities || opportunities.length === 0) {
+                container.innerHTML = '<div>No arbitrage opportunities</div>';
+                return;
+            }
+            
+            const html = opportunities.map(opp => `
+                <div class="arbitrage">
+                    <strong>${opp.asset}</strong> - ${opp.price_difference_pct.toFixed(2)}% profit<br>
+                    <small>Buy: ${opp.low_exchange} ($${opp.low_price.toFixed(2)})</small><br>
+                    <small>Sell: ${opp.high_exchange} ($${opp.high_price.toFixed(2)})</small>
+                </div>
+            `).join('');
+            
+            container.innerHTML = html;
+        }
+        
+        function updateCorrelations(correlations) {
+            const container = document.getElementById('correlations');
+            
+            if (!correlations || correlations.length === 0) {
+                container.innerHTML = '<div>No strong correlations found</div>';
+                return;
+            }
+            
+            const html = correlations.slice(0, 5).map(corr => `
+                <div class="correlation">
+                    <div>
+                        <strong>${corr.feature.replace('_', ' ')}</strong><br>
+                        <small>${corr.source}</small>
+                    </div>
+                    <div>
+                        <strong>${(corr.correlation * 100).toFixed(0)}%</strong><br>
+                        <small>${corr.strength}</small>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = html;
+        }
+        
+        function updateHealth(health) {
+            const container = document.getElementById('health');
+            
+            const exchanges = Object.keys(health);
+            if (exchanges.length === 0) {
+                container.innerHTML = '<div>No health data available</div>';
+                return;
+            }
+            
+            const html = exchanges.map(exchange => {
+                const data = health[exchange];
+                const score = data.health_score || 0;
+                const healthClass = score > 80 ? 'health-good' : score > 60 ? 'health-warning' : 'health-bad';
+                
+                return `
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #333;">
+                        <div>
+                            <strong>${exchange}</strong><br>
+                            <small>${data.assets_covered} assets</small>
+                        </div>
+                        <div class="${healthClass}">
+                            <strong>${score.toFixed(0)}%</strong><br>
+                            <small>${data.data_freshness_minutes.toFixed(0)}min old</small>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = html;
+        }
+        
+        function updateOverview(overview) {
+            const container = document.getElementById('overview');
+            
+            if (!overview || Object.keys(overview).length === 0) {
+                container.innerHTML = '<div>No market overview available</div>';
+                return;
+            }
+            
+            const html = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <strong>Assets Tracked:</strong><br>
+                        ${overview.total_assets_tracked || 0}
+                    </div>
+                    <div>
+                        <strong>Avg L5 Spread:</strong><br>
+                        ${(overview.average_spreads?.L5 || 0).toFixed(3)}%
+                    </div>
+                    <div>
+                        <strong>Total Volume:</strong><br>
+                        ${(overview.total_market_volume || 0).toLocaleString()}
+                    </div>
+                    <div>
+                        <strong>Market Volatility:</strong><br>
+                        ${((overview.market_volatility || 0) * 100).toFixed(2)}%
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        function updatePatterns(patterns) {
+            const container = document.getElementById('patterns');
+            
+            if (!patterns || Object.keys(patterns).length === 0) {
+                container.innerHTML = '<div>No pattern data available</div>';
+                return;
+            }
+            
+            const html = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <strong>Spread Patterns:</strong><br>
+                        ${patterns.spread_patterns || 0}
+                    </div>
+                    <div>
+                        <strong>Volume Patterns:</strong><br>
+                        ${patterns.volume_patterns || 0}
+                    </div>
+                    <div>
+                        <strong>Predictive Sequences:</strong><br>
+                        ${patterns.predictive_sequences_count || 0}
+                    </div>
+                    <div>
+                        <strong>Pattern Clusters:</strong><br>
+                        ${patterns.pattern_clusters_count || 0}
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        // Auto-refresh every 5 minutes
+        setInterval(loadInsights, 5 * 60 * 1000);
+        
+        // Load on page start
+        loadInsights();
+    </script>
+</body>
+</html>
