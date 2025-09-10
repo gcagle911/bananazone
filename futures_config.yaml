@@ -1,0 +1,45 @@
+# ====== FUTURES/LEVERAGE DATA COLLECTION ======
+interval_seconds: 5                 # fetch order book every 5 seconds
+gcs_bucket: "bananazone"            # same GCS bucket, different path structure
+
+# Futures/Leverage exchanges
+exchanges:
+  - name: bybit
+    type: futures
+    quote: USDT
+    enabled: false  # Disabled due to geo-blocking
+  - name: upbit
+    type: futures  
+    quote: USDT
+    enabled: true
+  - name: okx
+    type: futures
+    quote: USDT
+    enabled: true
+  - name: coinbase
+    type: futures
+    quote: USD
+    enabled: true
+
+assets: [BTC, ETH, ADA, XRP]
+layers: [5, 50, 100]
+
+# ====== PUBLISH CADENCE ======
+publish_1min_minutes: 5             # rebuild & publish 1m data every 5 minutes (≤5m lag)
+publish_5s_minutes: 60              # compose 5s daily file every 60 minutes
+
+# ====== PATHS (NDJSON .jsonl) - FUTURES STRUCTURE ======
+paths:
+  # 5-second futures data
+  five_sec_minute: "futures/{ex}/{asset}/5s/min/{day}/{hour}/{day}T{hour}:{minute}.jsonl"
+  five_sec_daily:  "futures/{ex}/{asset}/5s/{day}.jsonl"
+
+  # 1-minute futures data  
+  one_min_minute:  "futures/{ex}/{asset}/1min/min/{day}/{hour}/{day}T{hour}:{minute}.jsonl"
+  one_min_daily:   "futures/{ex}/{asset}/1min/{day}.jsonl"
+
+# ====== ERROR HANDLING ======
+max_retries: 3
+retry_delay: 2
+skip_failed_exchanges: true         # Skip exchanges that fail consistently
+health_check_interval: 300         # Check exchange health every 5 minutes
