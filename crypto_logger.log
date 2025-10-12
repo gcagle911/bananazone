@@ -39,3 +39,147 @@
 2025-09-09 17:44:41,754 - __main__ - INFO - Published 1min data for kraken:XRP
 2025-09-09 17:44:41,754 - storage - INFO - Composed 1 files into data/kraken/XRP/5s/2025-09-09.jsonl
 2025-09-09 17:44:41,754 - __main__ - INFO - Published 5s daily data for kraken:XRP
+2025-10-12 00:49:52,652 - __main__ - INFO - Starting system test...
+2025-10-12 00:49:52,664 - __main__ - INFO - Running data collection for 30 seconds...
+2025-10-12 00:49:53,281 - __main__ - INFO - 🚀 Using improved collector with guaranteed minute scheduling
+2025-10-12 00:49:53,295 - storage - INFO - Using local storage backend (GCS not available or configured)
+2025-10-12 00:49:53,296 - storage - INFO - Using local storage at: /workspace/data
+2025-10-12 00:49:53,296 - improved_logger - INFO - Storage backend initialized for bucket: bananazone
+2025-10-12 00:49:53,301 - improved_logger - INFO - Initialized exchange client: coinbase
+2025-10-12 00:49:53,306 - improved_logger - INFO - Initialized exchange client: kraken
+2025-10-12 00:49:56,093 - improved_logger - INFO - Loaded markets: coinbase (1062 symbols)
+2025-10-12 00:49:58,087 - improved_logger - INFO - Loaded markets: kraken (1270 symbols)
+2025-10-12 00:49:58,088 - guaranteed_minute_scheduler - INFO - ⏰ Ensuring data collection for 2025-10-12 00:48
+2025-10-12 00:49:58,088 - guaranteed_minute_scheduler - INFO - ⏰ Started guaranteed minute scheduler
+2025-10-12 00:49:58,089 - improved_logger - INFO - 🚀 Starting improved crypto data collector...
+2025-10-12 00:49:58,091 - guaranteed_minute_scheduler - WARNING - ⚠️  Missing data for coinbase BTC at 00:48
+2025-10-12 00:49:58,093 - startup_fix - INFO - Running one-time header fix for existing GCS files...
+2025-10-12 00:49:58,095 - startup_fix - ERROR - Header fix failed - will retry on next startup
+2025-10-12 00:49:58,099 - realtime_health_monitor - INFO - 🏥 Started real-time health monitor
+2025-10-12 00:49:58,099 - improved_logger - INFO - 📡 Collection interval: 5s
+2025-10-12 00:49:58,099 - improved_logger - INFO - 📊 Tracking: 2 exchanges × 4 assets = 8 pairs
+2025-10-12 00:49:58,410 - guaranteed_minute_scheduler - INFO - ✅ Force collected data for coinbase BTC
+2025-10-12 00:49:58,410 - guaranteed_minute_scheduler - WARNING - ⚠️  Missing data for coinbase ETH at 00:48
+2025-10-12 00:49:58,442 - guaranteed_minute_scheduler - INFO - ✅ Force collected data for coinbase ETH
+2025-10-12 00:49:58,442 - guaranteed_minute_scheduler - WARNING - ⚠️  Missing data for coinbase ADA at 00:48
+2025-10-12 00:49:58,539 - guaranteed_minute_scheduler - INFO - ✅ Force collected data for coinbase ADA
+2025-10-12 00:49:58,540 - guaranteed_minute_scheduler - WARNING - ⚠️  Missing data for coinbase XRP at 00:48
+2025-10-12 00:49:58,590 - storage - INFO - Composed 2 files into data/coinbase/BTC/1min/2025-10-12.jsonl
+2025-10-12 00:49:58,590 - improved_logger - INFO - 📊 Published 1min data for coinbase:BTC
+2025-10-12 00:49:58,591 - storage - INFO - Composed 2 files into data/coinbase/BTC/5s/2025-10-12.jsonl
+2025-10-12 00:49:58,591 - improved_logger - INFO - 📈 Published 5s daily data for coinbase:BTC
+2025-10-12 00:49:58,592 - storage - INFO - Composed 2 files into data/coinbase/ETH/1min/2025-10-12.jsonl
+2025-10-12 00:49:58,593 - improved_logger - INFO - 📊 Published 1min data for coinbase:ETH
+2025-10-12 00:49:58,593 - storage - INFO - Composed 2 files into data/coinbase/ETH/5s/2025-10-12.jsonl
+2025-10-12 00:49:58,593 - improved_logger - INFO - 📈 Published 5s daily data for coinbase:ETH
+2025-10-12 00:49:58,595 - storage - INFO - Composed 2 files into data/coinbase/ADA/1min/2025-10-12.jsonl
+2025-10-12 00:49:58,595 - improved_logger - INFO - 📊 Published 1min data for coinbase:ADA
+2025-10-12 00:49:58,596 - storage - INFO - Composed 2 files into data/coinbase/ADA/5s/2025-10-12.jsonl
+2025-10-12 00:49:58,596 - improved_logger - INFO - 📈 Published 5s daily data for coinbase:ADA
+2025-10-12 00:49:58,597 - storage - INFO - Composed 1 files into data/coinbase/XRP/1min/2025-10-12.jsonl
+2025-10-12 00:49:58,597 - improved_logger - INFO - 📊 Published 1min data for coinbase:XRP
+2025-10-12 00:49:58,597 - storage - INFO - Composed 1 files into data/coinbase/XRP/5s/2025-10-12.jsonl
+2025-10-12 00:49:58,598 - improved_logger - INFO - 📈 Published 5s daily data for coinbase:XRP
+2025-10-12 00:49:58,599 - storage - INFO - Composed 1 files into data/kraken/BTC/1min/2025-10-12.jsonl
+2025-10-12 00:49:58,599 - improved_logger - INFO - 📊 Published 1min data for kraken:BTC
+2025-10-12 00:49:58,600 - storage - INFO - Composed 1 files into data/kraken/BTC/5s/2025-10-12.jsonl
+2025-10-12 00:49:58,600 - improved_logger - INFO - 📈 Published 5s daily data for kraken:BTC
+2025-10-12 00:49:58,601 - storage - INFO - Composed 1 files into data/kraken/ETH/1min/2025-10-12.jsonl
+2025-10-12 00:49:58,601 - improved_logger - INFO - 📊 Published 1min data for kraken:ETH
+2025-10-12 00:49:58,602 - storage - INFO - Composed 1 files into data/kraken/ETH/5s/2025-10-12.jsonl
+2025-10-12 00:49:58,602 - improved_logger - INFO - 📈 Published 5s daily data for kraken:ETH
+2025-10-12 00:49:58,605 - storage - INFO - Composed 1 files into data/kraken/ADA/1min/2025-10-12.jsonl
+2025-10-12 00:49:58,605 - improved_logger - INFO - 📊 Published 1min data for kraken:ADA
+2025-10-12 00:49:58,605 - storage - INFO - Composed 1 files into data/kraken/ADA/5s/2025-10-12.jsonl
+2025-10-12 00:49:58,605 - improved_logger - INFO - 📈 Published 5s daily data for kraken:ADA
+2025-10-12 00:49:58,607 - storage - INFO - Composed 1 files into data/kraken/XRP/1min/2025-10-12.jsonl
+2025-10-12 00:49:58,607 - improved_logger - INFO - 📊 Published 1min data for kraken:XRP
+2025-10-12 00:49:58,608 - storage - INFO - Composed 1 files into data/kraken/XRP/5s/2025-10-12.jsonl
+2025-10-12 00:49:58,608 - improved_logger - INFO - 📈 Published 5s daily data for kraken:XRP
+2025-10-12 00:49:58,643 - guaranteed_minute_scheduler - INFO - ✅ Force collected data for coinbase XRP
+2025-10-12 00:49:58,644 - guaranteed_minute_scheduler - WARNING - ⚠️  Missing data for kraken BTC at 00:48
+2025-10-12 00:49:59,742 - guaranteed_minute_scheduler - INFO - ✅ Force collected data for kraken BTC
+2025-10-12 00:49:59,743 - guaranteed_minute_scheduler - WARNING - ⚠️  Missing data for kraken ETH at 00:48
+2025-10-12 00:50:00,093 - realtime_health_monitor - ERROR - 💔 Health: 0/8 files healthy (0%) - 0 stale, 0 missing
+2025-10-12 00:50:00,094 - realtime_health_monitor - WARNING - 🚨 HTTP 403: coinbase XRP
+2025-10-12 00:50:00,094 - realtime_health_monitor - WARNING - 🚨 HTTP 403: kraken BTC
+2025-10-12 00:50:00,094 - realtime_health_monitor - WARNING - 🚨 HTTP 403: kraken ETH
+2025-10-12 00:50:00,094 - realtime_health_monitor - WARNING - 🚨 HTTP 403: kraken ADA
+2025-10-12 00:50:00,094 - realtime_health_monitor - WARNING - 🚨 HTTP 403: kraken XRP
+2025-10-12 00:50:00,897 - guaranteed_minute_scheduler - INFO - ✅ Force collected data for kraken ETH
+2025-10-12 00:50:00,897 - guaranteed_minute_scheduler - WARNING - ⚠️  Missing data for kraken ADA at 00:48
+2025-10-12 00:50:02,094 - guaranteed_minute_scheduler - INFO - ✅ Force collected data for kraken ADA
+2025-10-12 00:50:02,094 - guaranteed_minute_scheduler - WARNING - ⚠️  Missing data for kraken XRP at 00:48
+2025-10-12 00:50:03,124 - guaranteed_minute_scheduler - INFO - ✅ Force collected data for kraken XRP
+2025-10-12 00:50:22,698 - __main__ - INFO - Data collection stopped, checking results...
+2025-10-12 00:50:22,704 - __main__ - INFO - Found 51 JSONL files:
+2025-10-12 00:50:22,704 - __main__ - INFO -   data/coinbase/ETH/5s/2025-10-12.jsonl
+2025-10-12 00:50:22,705 - __main__ - INFO -     Records: 2
+2025-10-12 00:50:22,705 - __main__ - INFO -     Sample: coinbase ETH mid=3723.8500 at 2025-10-12T00:48:30Z
+2025-10-12 00:50:22,705 - __main__ - INFO -   data/coinbase/ETH/1min/2025-10-12.jsonl
+2025-10-12 00:50:22,705 - __main__ - INFO -     Records: 2
+2025-10-12 00:50:22,705 - __main__ - INFO -     Sample: coinbase ETH mid=3723.8500 at 2025-10-12T00:48:00Z
+2025-10-12 00:50:22,705 - __main__ - INFO -   data/coinbase/ETH/1min/min/2025-10-12/00/2025-10-12T00:48.jsonl
+2025-10-12 00:50:22,705 - __main__ - INFO -     Records: 1
+2025-10-12 00:50:22,705 - __main__ - INFO -     Sample: coinbase ETH mid=3723.8500 at 2025-10-12T00:48:00Z
+2025-10-12 00:50:22,706 - __main__ - INFO -   data/coinbase/ETH/1min/min/2025-10-12/00/2025-10-12T00:49.jsonl
+2025-10-12 00:50:22,706 - __main__ - INFO -     Records: 1
+2025-10-12 00:50:22,706 - __main__ - INFO -     Sample: coinbase ETH mid=3723.8500 at 2025-10-12T00:49:00Z
+2025-10-12 00:50:22,706 - __main__ - INFO -   data/coinbase/ETH/5s/min/2025-10-12/00/2025-10-12T00:48.jsonl
+2025-10-12 00:50:22,706 - __main__ - INFO -     Records: 1
+2025-10-12 00:50:22,706 - __main__ - INFO -     Sample: coinbase ETH mid=3723.8500 at 2025-10-12T00:48:30Z
+2025-10-12 00:50:22,706 - __main__ - INFO - Total records found: 7
+2025-10-12 00:50:22,706 - __main__ - INFO - Found exchange/asset combinations: {('coinbase', 'ETH')}
+2025-10-12 00:50:22,706 - __main__ - INFO - ✅ System test PASSED - Data collection is working!
+2025-10-12 00:50:22,706 - __main__ - INFO - Current data file structure:
+2025-10-12 00:50:22,709 - __main__ - INFO -   data/coinbase/ADA/1min/2025-10-12.jsonl (588 bytes)
+2025-10-12 00:50:22,709 - __main__ - INFO -   data/coinbase/ADA/1min/min/2025-10-12/00/2025-10-12T00:48.jsonl (294 bytes)
+2025-10-12 00:50:22,709 - __main__ - INFO -   data/coinbase/ADA/1min/min/2025-10-12/00/2025-10-12T00:49.jsonl (294 bytes)
+2025-10-12 00:50:22,709 - __main__ - INFO -   data/coinbase/ADA/5s/2025-10-12.jsonl (587 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/ADA/5s/min/2025-10-12/00/2025-10-12T00:48.jsonl (290 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/ADA/5s/min/2025-10-12/00/2025-10-12T00:49.jsonl (297 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/ADA/5s/min/2025-10-12/00/2025-10-12T00:50.jsonl (1181 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/BTC/1min/2025-10-12.jsonl (612 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/BTC/1min/min/2025-10-12/00/2025-10-12T00:48.jsonl (306 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/BTC/1min/min/2025-10-12/00/2025-10-12T00:49.jsonl (306 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/BTC/5s/2025-10-12.jsonl (611 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/BTC/5s/min/2025-10-12/00/2025-10-12T00:48.jsonl (302 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/BTC/5s/min/2025-10-12/00/2025-10-12T00:49.jsonl (309 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/BTC/5s/min/2025-10-12/00/2025-10-12T00:50.jsonl (1196 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/ETH/1min/2025-10-12.jsonl (576 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/ETH/1min/min/2025-10-12/00/2025-10-12T00:48.jsonl (288 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/ETH/1min/min/2025-10-12/00/2025-10-12T00:49.jsonl (288 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/ETH/5s/2025-10-12.jsonl (575 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/ETH/5s/min/2025-10-12/00/2025-10-12T00:48.jsonl (284 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/ETH/5s/min/2025-10-12/00/2025-10-12T00:49.jsonl (291 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/ETH/5s/min/2025-10-12/00/2025-10-12T00:50.jsonl (1210 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/XRP/1min/2025-10-12.jsonl (292 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/XRP/1min/min/2025-10-12/00/2025-10-12T00:49.jsonl (292 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/XRP/5s/2025-10-12.jsonl (295 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/XRP/5s/min/2025-10-12/00/2025-10-12T00:48.jsonl (288 bytes)
+2025-10-12 00:50:22,710 - __main__ - INFO -   data/coinbase/XRP/5s/min/2025-10-12/00/2025-10-12T00:49.jsonl (295 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/coinbase/XRP/5s/min/2025-10-12/00/2025-10-12T00:50.jsonl (1188 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/ADA/1min/2025-10-12.jsonl (294 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/ADA/1min/min/2025-10-12/00/2025-10-12T00:49.jsonl (294 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/ADA/5s/2025-10-12.jsonl (297 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/ADA/5s/min/2025-10-12/00/2025-10-12T00:48.jsonl (288 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/ADA/5s/min/2025-10-12/00/2025-10-12T00:49.jsonl (297 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/ADA/5s/min/2025-10-12/00/2025-10-12T00:50.jsonl (1180 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/BTC/1min/2025-10-12.jsonl (296 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/BTC/1min/min/2025-10-12/00/2025-10-12T00:49.jsonl (296 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/BTC/5s/2025-10-12.jsonl (299 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/BTC/5s/min/2025-10-12/00/2025-10-12T00:48.jsonl (280 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/BTC/5s/min/2025-10-12/00/2025-10-12T00:49.jsonl (299 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/BTC/5s/min/2025-10-12/00/2025-10-12T00:50.jsonl (1143 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/ETH/1min/2025-10-12.jsonl (294 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/ETH/1min/min/2025-10-12/00/2025-10-12T00:49.jsonl (294 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/ETH/5s/2025-10-12.jsonl (297 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/ETH/5s/min/2025-10-12/00/2025-10-12T00:48.jsonl (289 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/ETH/5s/min/2025-10-12/00/2025-10-12T00:49.jsonl (297 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/ETH/5s/min/2025-10-12/00/2025-10-12T00:50.jsonl (1140 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/XRP/1min/2025-10-12.jsonl (298 bytes)
+2025-10-12 00:50:22,711 - __main__ - INFO -   data/kraken/XRP/1min/min/2025-10-12/00/2025-10-12T00:49.jsonl (298 bytes)
+2025-10-12 00:50:22,712 - __main__ - INFO -   data/kraken/XRP/5s/2025-10-12.jsonl (301 bytes)
+2025-10-12 00:50:22,712 - __main__ - INFO -   data/kraken/XRP/5s/min/2025-10-12/00/2025-10-12T00:48.jsonl (284 bytes)
+2025-10-12 00:50:22,712 - __main__ - INFO -   data/kraken/XRP/5s/min/2025-10-12/00/2025-10-12T00:49.jsonl (301 bytes)
+2025-10-12 00:50:22,712 - __main__ - INFO -   data/kraken/XRP/5s/min/2025-10-12/00/2025-10-12T00:50.jsonl (1194 bytes)
